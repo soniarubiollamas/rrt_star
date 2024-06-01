@@ -7,13 +7,15 @@
 TreeNode::TreeNode(){
     std::cout << "Constructor" << std::endl;
 	parent = NULL;
+    cost = 0.0; // Initialize cost to 0.0
 }
 
-TreeNode::TreeNode(std::vector <int> point_){
+TreeNode::TreeNode(std::vector <int> point_, double cost_){
     // std::cout << "Constructor" << std::endl;
     // std::cout << "point_:" << point_[0] << ", " << point_[1] << std::endl;
     point = point_;
     parent = NULL;
+    cost = cost_; // Initialize cost to cost_
 }
 
 TreeNode::~TreeNode(){
@@ -72,6 +74,7 @@ void TreeNode::appendChild(TreeNode *child)
 void TreeNode::setParent(TreeNode *theParent)
 {
     parent = theParent;
+    // this->parent = theParent; ?? try this if above doesnt work
 }
 
 bool TreeNode::hasParent()
@@ -103,6 +106,14 @@ int TreeNode::childrenNumber()
 std::vector <int> TreeNode::getNode() 
 {
     return point;
+}
+double TreeNode::getCost() const
+{
+    return cost;
+}
+void TreeNode::setCost(double new_cost)
+{
+    cost = new_cost;
 }
 
 void TreeNode::printNode() 

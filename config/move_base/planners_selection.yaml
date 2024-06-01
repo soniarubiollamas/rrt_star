@@ -1,16 +1,16 @@
 shutdown_costmaps: false
 
-controller_frequency: 10.0
-controller_patience: 3.0
+controller_frequency: 10.0 #frequency in Hz to run controller
+controller_patience:  30 #3.0 #time to wait to reach a goal
 
-planner_frequency: 1.0
-planner_patience: 5.0
+planner_frequency: 0.001 #1.0 #frequency in Hz to run global planner
+planner_patience: 50 #5.0 #time to wait to get a new plan
 
 oscillation_timeout: 10.0
 oscillation_distance: 0.2
 
 # Local planner
-base_local_planner: p16_llc_local_planner/LLCLocalPlanner
+base_local_planner: dwa_local_planner/DWAPlannerROS
 #p16_llc_local_planner/LLCLocalPlanner
 #dwa_local_planner/DWAPlannerROS
 # ALTERNATIVES: dwa_local_planner/DWAPlannerROS, base_local_planner/TrajectoryPlannerROS

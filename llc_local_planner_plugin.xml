@@ -1,8 +1,0 @@
-<library path="lib/libp16_llc_local_planner_lib">
-	<class name="p16_llc_local_planner/LLCLocalPlanner"
-		type="p16_llc_local_planner::LLCLocalPlanner"
-		base_class_type="nav_core::BaseLocalPlanner">
-		<description>This is a local planner plugin.</description>
-	</class>
-</library>
-

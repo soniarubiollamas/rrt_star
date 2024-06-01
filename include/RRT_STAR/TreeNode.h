@@ -24,22 +24,24 @@ class TreeNode
         void setParent(TreeNode *parent);
 
         bool hasChildren() const { return children.size() > 0; }
-        bool hasParent() const;
+        bool hasParent(); 
 
         TreeNode* getParent();
         TreeNode* getChild(int pos);
 
         int childrenNumber(); 
 
-
 		std::vector <int> getNode();
+        double getCost() const; // Add getter for cost  
+        void setCost(double new_cost_); // Add setter for cost
+
 		void printNode();
 		void printTree();
 
-		std::vector <std::vector <int>> returnSolution();
-	
 		TreeNode* nearNode(TreeNode* node1, TreeNode* node2);
 		TreeNode* neast(TreeNode *root);
+
+        std::vector <std::vector <int>> returnSolution();
 };
 
 #endif
