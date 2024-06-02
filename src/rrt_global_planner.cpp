@@ -29,8 +29,8 @@ void RRTPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_
         ros::NodeHandle nh_local("~/local_costmap/");
         ros::NodeHandle nh_global("~/global_costmap/");
 
-        nh.param("maxsamples", max_samples_, 0.0);
-        nh.param("search_radius", search_radius_, 0.0);
+        nh.param("maxsamples", max_samples_, 3000.0);
+        nh.param("search_radius", search_radius_, 1.0);
 
         //to make sure one of the nodes in the plan lies in the local costmap
         double width, height;
@@ -96,7 +96,7 @@ bool RRTPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometr
     std::vector<int> point_goal{(int)goal_mx,(int)goal_my};    
   	std::vector<std::vector<int>> solRRTStar;
     std::cout << "Computing RRT*" << std::endl;
-    bool computed = computeRRTStar(point_start, point_goal, solRRTStar);
+    bool computed = computeRRTStar(point_start, point_goal, solRRTStar, tree);
     if (computed){        
         getPlan(solRRTStar, plan);
         // add goal
@@ -109,7 +109,7 @@ bool RRTPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometr
 }
 
 bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<int> goal, 
-                            std::vector<std::vector<int>>& sol){
+                            std::vector<std::vector<int>>& sol, std::vector<TreeNode*>& tree){
     bool finished = false;
 
     //Initialize random number generator
@@ -120,10 +120,11 @@ bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<
     TreeNode* goal_node = nullptr;
     std::cout << "Start node: " << start_node->getNode()[0] << ", " << start_node->getNode()[1] << std::endl;
 
-    std::vector<TreeNode*> tree;
+    // std::vector<TreeNode*> tree;
     tree.push_back(start_node);
+    int i = 0;
 
-    while(finished == false){
+    while(finished == false && i < max_samples_){
         
   
         std::vector<int> random_point = {rand() % costmap_->getSizeInCellsX(), rand() % costmap_->getSizeInCellsY()};
@@ -132,70 +133,91 @@ bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<
 
         //find the closest node in the tree to the random point using neast
         TreeNode* nearest_node = random_node->neast(start_node);
+        std::cout << "Nearest node: " << nearest_node->getNode()[0] << ", " << nearest_node->getNode()[1] << std::endl;
         //check if the path is free
         //get node
         std::vector <int> nearest_point = nearest_node->getNode();
         
         double dist = distance(nearest_point[0], nearest_point[1], random_point[0], random_point[1]) * resolution_;
-        std::cout << "Distance: " << dist << std::endl;
+        std::cout << "Distance from random node to nearest node: " << dist << std::endl;
 
         if(dist > max_dist_){
             std::cout << "Distance greater than max_dist" << std::endl;
             float angle = atan2(random_point[1]-nearest_point[1], random_point[0]-nearest_point[0]);
             // Same direction at distance max_dist_
-            random_point[0]= nearest_point[0] + max_dist_ * cos(angle);
-            random_point[1]= nearest_point[1] + max_dist_ * sin(angle);
+            random_point[0]= nearest_point[0] + max_dist_ * cos(angle)*10;
+            random_point[1]= nearest_point[1] + max_dist_ * sin(angle)*10;
+            std::cout << "New random point: " << random_point[0] << ", " << random_point[1] << std::endl;
             delete random_node;
             random_node = new TreeNode(random_point);   
+            std:: cout << "New random node: " << random_node->getNode()[0] << ", " << random_node->getNode()[1] << std::endl;
         }
 
         bool free = obstacleFree(nearest_point[0], nearest_point[1], random_point[0], random_point[1]);
-        std::cout << "Free: " << free << std::endl;
+        std::cout << "Free from random point and nearest point: " << free << std::endl;
         if (free){
             // compute cost
 
-            double new_cost = nearest_node->getCost() + distance(nearest_point[0], nearest_point[1], random_point[0], random_point[1]);
-            random_node->setCost(new_cost);
-            std::cout << "New cost: " << new_cost << std::endl;
+            double actual_min_random_cost = nearest_node->getCost() + distance(nearest_point[0], nearest_point[1], random_point[0], random_point[1]);
+            random_node->setCost(actual_min_random_cost);
+            std::cout << "Actual random cost: " << actual_min_random_cost << std::endl;
             //add the new node to the tree
             nearest_node->appendChild(random_node);
+            // tree.push_back(random_node);
             std::cout << "Added child" << std::endl;
+            std::cout << "Number of nodes in tree after adding the random node: " << tree.size() << std::endl;
 
 
             // find neighbors of the new node
             std::cout << "Finding neighbors" << std::endl;
-            std::vector<TreeNode*> neighbors = findNeighbors(random_node, search_radius_);
+            std::vector<TreeNode*> neighbors = findNeighbors(random_node, search_radius_, tree);
             TreeNode* min_cost_node = nearest_node;
             std::cout << "Search radius: " << search_radius_ << std::endl;
-            std::cout << "Number of nodes in tree: " << tree.size() << std::endl;
+            // std::cout << "Number of nodes in tree: " << tree.size() << std::endl;
             std::cout << "Neighbors size: " << neighbors.size() << std::endl;
 
             for(TreeNode* neighbor: neighbors){
                 double tentative_cost = neighbor->getCost() + distance(neighbor->getNode()[0], neighbor->getNode()[1], random_node->getNode()[0], random_node->getNode()[1]);
-                if(tentative_cost < new_cost){
-                    new_cost = tentative_cost;
+                // std::cout << "Random node cost: " << random_node->getCost() << std::endl;
+                // std::cout << "Tentavie cost from neigbor: " << tentative_cost << std::endl;
+                actual_min_random_cost =  random_node->getCost();
+                if(tentative_cost < actual_min_random_cost){
+                    std::cout << "Tentative cost less than random node cost" << std::endl;
+                    actual_min_random_cost = tentative_cost;
+                    // random_node->setCost(tentative_cost);
+                    // new_cost = tentative_cost;
                     min_cost_node = neighbor;
-                    std::cout << "New tentative cost: " << new_cost << std::endl;
+                    std::cout << "New neigbor node is: " << neighbor->getNode()[0] << ", " << neighbor->getNode()[1] << std::endl;
                 }
             }
-
+            random_node->setCost(actual_min_random_cost);    
             random_node->setParent(min_cost_node);
-            random_node->setCost(new_cost);
+            // random_node->setCost(new_cost);
             min_cost_node->appendChild(random_node);
-            std::cout << "Added child to min cost node" << std::endl;
+            tree.push_back(random_node);
+            tree.push_back(min_cost_node);
+            std::cout << "Linked random node with min_cost_node" << std::endl;
+
+            
 
             // rewire the tree
             rewire(random_node, neighbors);
             std::cout << "Rewired" << std::endl;
 
-            finished = obstacleFree(random_point[0], random_point[1], goal[0], goal[1]);
+            finished = obstacleFree(min_cost_node->getNode()[0], min_cost_node->getNode()[1], goal[0], goal[1]);
             if (finished){
-                goal_node = new TreeNode(goal); // add goal node
-                random_node->appendChild(goal_node);
-            	std::cout << "Finished jj" << std::endl;
+                double cost_goal_node = random_node->getCost() + distance(min_cost_node->getNode()[0], min_cost_node->getNode()[1], goal[0], goal[1]);
+                goal_node = new TreeNode(goal, cost_goal_node); // add goal node
+                goal_node->setParent(min_cost_node);
+                tree.push_back(goal_node);
+            	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!! Finished !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1" << std::endl;
             }
+            visualizeTree(tree);
         }
+        i++;
+        std:: cout << "Iteration: " << i << std::endl;
     }
+
 
     sol = goal_node->returnSolution();
     std::cout << "Solution size: " << sol.size() << std::endl;
@@ -265,7 +287,7 @@ void RRTPlanner::getPlan(const std::vector<std::vector<int>> sol, std::vector<ge
         plan.push_back(pose);
 
         // Add a Marker for visualization
-        plotPoint(point, "rrtStar_path_sol", id++, 0.4, 0.0, 1.0, 0.0);
+        // plotPoint(point, "rrtStar_path_sol", id++, 0.4, 0.0, 1.0, 0.0);
 
         // Add a Line marker between consecutive points
         if (!prevPose.pose.position.x && !prevPose.pose.position.y) {
@@ -296,10 +318,14 @@ void RRTPlanner::getPlan(const std::vector<std::vector<int>> sol, std::vector<ge
     }
 }
 
-std::vector<TreeNode*> RRTPlanner::findNeighbors(TreeNode* node, double radius){
+std::vector<TreeNode*> RRTPlanner::findNeighbors(TreeNode* node, double radius, std::vector<TreeNode*>& tree){
     std::vector<TreeNode*> neighbors;
+    std::cout << "  entered finding neighbors function" << std::endl;
+    std::cout << "  Number of nodes in tree INSIDE FUNCTION: " << tree.size() << std::endl;
     for (TreeNode* other_node: tree){
-        if (distance(node->getNode()[0], node->getNode()[1], other_node->getNode()[0], other_node->getNode()[1])*resolution_ <= radius){
+        double dist = distance(node->getNode()[0], node->getNode()[1], other_node->getNode()[0], other_node->getNode()[1]);
+        if (dist*resolution_ <= radius){
+            std::cout << "  Distance to neigbor node: " << dist*resolution_ << std::endl;
             neighbors.push_back(other_node);
         }
     }
@@ -317,31 +343,82 @@ void RRTPlanner::rewire(TreeNode* node, std::vector<TreeNode*> neighbors){
 }
 
 
-void RRTPlanner::plotPoint(const std::vector<int>& point, const std::string& ns, const int id,
-                                const double size, const double color_r, const double color_g, const double color_b) {
-    visualization_msgs::Marker marker;
-    marker.header.frame_id = global_frame_id_;
-    marker.header.stamp = ros::Time::now();
-    marker.ns = ns;
-    marker.id = id;
-    marker.type = visualization_msgs::Marker::SPHERE;
-    marker.action = visualization_msgs::Marker::ADD;
-    costmap_->mapToWorld(static_cast<unsigned int>(point[0]), static_cast<unsigned int>(point[1]),
-                         marker.pose.position.x, marker.pose.position.y);
-    marker.pose.position.z = 0.0;
-    marker.pose.orientation.w = 1.0;
-    marker.scale.x = size;
-    marker.scale.y = size;
-    marker.scale.z = size;
-    marker.color.a = 1.0;
-    marker.color.r = color_r;
-    marker.color.g = color_g;
-    marker.color.b = color_b;
+// void RRTPlanner::plotPoint(const std::vector<int>& point, const std::string& ns, const int id,
+//                                 const double size, const double color_r, const double color_g, const double color_b) {
+//     visualization_msgs::Marker marker;
+//     marker.header.frame_id = global_frame_id_;
+//     marker.header.stamp = ros::Time::now();
+//     marker.ns = ns;
+//     marker.id = id;
+//     marker.type = visualization_msgs::Marker::SPHERE;
+//     marker.action = visualization_msgs::Marker::ADD;
+//     costmap_->mapToWorld(static_cast<unsigned int>(point[0]), static_cast<unsigned int>(point[1]),
+//                          marker.pose.position.x, marker.pose.position.y);
+//     marker.pose.position.z = 0.0;
+//     marker.pose.orientation.w = 1.0;
+//     marker.scale.x = size;
+//     marker.scale.y = size;
+//     marker.scale.z = size;
+//     marker.color.a = 1.0;
+//     marker.color.r = color_r;
+//     marker.color.g = color_g;
+//     marker.color.b = color_b;
 
-    visualization_msgs::MarkerArray markerArray;
-    markerArray.markers.push_back(marker);
-    points_pub_.publish(markerArray);
+//     visualization_msgs::MarkerArray markerArray;
+//     markerArray.markers.push_back(marker);
+//     points_pub_.publish(markerArray);
+// }
+
+void RRTPlanner::visualizeTree(const std::vector<TreeNode*>& tree) {
+    visualization_msgs::MarkerArray marker_array;
+
+    // Create points marker
+    visualization_msgs::Marker points_marker;
+    points_marker.header.frame_id = global_frame_id_;
+    points_marker.header.stamp = ros::Time::now();
+    points_marker.ns = "rrt_points";
+    points_marker.id = 0;
+    points_marker.type = visualization_msgs::Marker::POINTS;
+    points_marker.action = visualization_msgs::Marker::ADD;
+    points_marker.pose.orientation.w = 1.0;
+    points_marker.scale.x = 0.1;
+    points_marker.scale.y = 0.1;
+    points_marker.color.r = 1.0;
+    points_marker.color.a = 1.0;
+
+    // Create lines marker
+    visualization_msgs::Marker lines_marker;
+    lines_marker.header.frame_id = global_frame_id_;
+    lines_marker.header.stamp = ros::Time::now();
+    lines_marker.ns = "rrt_lines";
+    lines_marker.id = 1;
+    lines_marker.type = visualization_msgs::Marker::LINE_LIST;
+    lines_marker.action = visualization_msgs::Marker::ADD;
+    lines_marker.pose.orientation.w = 1.0;
+    lines_marker.scale.x = 0.05;
+    lines_marker.color.b = 1.0;
+    lines_marker.color.a = 1.0;
+
+    for (const auto& node : tree) {
+        geometry_msgs::Point p;
+        costmap_->mapToWorld(node->getNode()[0], node->getNode()[1], p.x, p.y);
+        p.z = 0.0;
+        points_marker.points.push_back(p);
+
+        if (node->getParent()) {
+            geometry_msgs::Point parent_p;
+            costmap_->mapToWorld(node->getParent()->getNode()[0], node->getParent()->getNode()[1], parent_p.x, parent_p.y);
+            parent_p.z = 0.0;
+            lines_marker.points.push_back(p);
+            lines_marker.points.push_back(parent_p);
+        }
+    }
+
+    marker_array.markers.push_back(points_marker);
+    marker_array.markers.push_back(lines_marker);
+
+    points_pub_.publish(marker_array);
+    lines_pub_.publish(marker_array);
 }
-
 };
 
