@@ -46,6 +46,7 @@ class TreeNode
         std::vector<TreeNode*> near(TreeNode* target_node,TreeNode* itr_nodes , double max_dist);
 
         std::vector <std::vector <int>> returnSolution();
+        std::vector<TreeNode*> getAllNodes();
 };
 
 #endif

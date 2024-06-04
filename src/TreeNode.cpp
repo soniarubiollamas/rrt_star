@@ -3,6 +3,7 @@
 #include <iostream>
 #include <geometry_msgs/PoseStamped.h>
 #include "RRT_STAR/TreeNode.h"
+#include "RRT_STAR/rrt_global_planner.h"
 
 TreeNode::TreeNode(){
     std::cout << "Constructor" << std::endl;
@@ -121,6 +122,21 @@ void TreeNode::printNode()
 	std::cout << "Node: (" << point[0] << "," << point[1] << ")." << std::endl;
 }
 
+std::vector<TreeNode*> TreeNode::getAllNodes() {
+    std::vector<TreeNode*> all_nodes;
+
+    // Add the current node to the vector
+    all_nodes.push_back(this);
+
+    // Recursively add all children's nodes to the vector
+    for (int it = 0; it < children.size(); it++) {
+        std::vector<TreeNode*> child_nodes = children[it]->getAllNodes();
+        all_nodes.insert(all_nodes.end(), child_nodes.begin(), child_nodes.end());
+    }
+
+    return all_nodes;
+}
+
 void TreeNode::printTree()
 {   
     TreeNode *child = NULL;
@@ -187,20 +203,7 @@ void TreeNode::removeChild(TreeNode* child) {
         children.erase(it, children.end());
     }
     
-std::vector<TreeNode*> TreeNode::getAllNodes() {
-    std::vector<TreeNode*> all_nodes;
 
-    // Add the current node to the vector
-    all_nodes.push_back(this);
-
-    // Recursively add all children's nodes to the vector
-    for (int it = 0; it < children.size(); it++) {
-        std::vector<TreeNode*> child_nodes = children[it]->getAllNodes();
-        all_nodes.insert(all_nodes.end(), child_nodes.begin(), child_nodes.end());
-    }
-
-    return all_nodes;
-}
 
 std::vector <std::vector <int>> TreeNode::returnSolution(){
 
