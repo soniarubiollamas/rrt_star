@@ -169,6 +169,7 @@ bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<
 
             std::cout << "Finding neighbors with search radius: " << search_radius_ << std::endl;
             std::vector<TreeNode*> neighbors = start_node->near(random_node,start_node,max_dist_);            // compute cost
+            std::cout << "Number of neighbors: " << neighbors.size() << std::endl;
             
             TreeNode* min_cost_node = chooseParent(random_node, neighbors);
             // std::cout << "Number of nodes in tree after adding the neighbor node with the lowest cost: " << tree.size() << std::endl;
@@ -210,6 +211,7 @@ bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<
     // sol = goal_node->returnSolution();
     std::cout << "Solution size: " << sol.size() << std::endl;
     // return false; // not finished?
+    return finished;
 }
 
 bool RRTPlanner::obstacleFree(const unsigned int x0, const unsigned int y0, 
