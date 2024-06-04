@@ -48,6 +48,8 @@ private:
     void getPlan(const std::vector<std::vector<int>> sol, std::vector<geometry_msgs::PoseStamped>& plan);
     std::vector<TreeNode*> findNeighbors(TreeNode* node, double radius, std::vector<TreeNode*>& tree);
     void rewire(TreeNode* node, std::vector<TreeNode*> neighbors);
+    TreeNode* chooseParent(TreeNode* rand_node, const std::vector<TreeNode*>& near_nodes);
+    void updateCosts(TreeNode* node,TreeNode* start_node , double max_dist);
 
     // Plots
     ros::Publisher lines_pub_;

@@ -162,6 +162,46 @@ TreeNode* TreeNode::neast(TreeNode *root){
     return shortest;
 }
 
+
+// Function to find nodes in the tree that are within a certain distance from a given node
+std::vector<TreeNode*> TreeNode::near(TreeNode* target_node,TreeNode* start_node , double max_dist) {
+    std::vector<TreeNode*> near_nodes;
+    std::vector<TreeNode*> all_nodes = start_node->getAllNodes();
+    double x1, x2, y1, y2,distance;
+    for (int it = 0; it < all_nodes.size(); it++) {
+        x1 = all_nodes[it]->point[0];
+        x2 = target_node->point[0];
+        y1 = all_nodes[it]->point[1];
+        y2 = target_node->point[1];        
+        double distance = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))*0.032;        
+        if (distance <= max_dist) {
+            near_nodes.push_back(all_nodes[it]);
+                  }
+    } 
+
+    return near_nodes;
+}
+
+void TreeNode::removeChild(TreeNode* child) {
+        auto it = std::remove(children.begin(), children.end(), child);
+        children.erase(it, children.end());
+    }
+    
+std::vector<TreeNode*> TreeNode::getAllNodes() {
+    std::vector<TreeNode*> all_nodes;
+
+    // Add the current node to the vector
+    all_nodes.push_back(this);
+
+    // Recursively add all children's nodes to the vector
+    for (int it = 0; it < children.size(); it++) {
+        std::vector<TreeNode*> child_nodes = children[it]->getAllNodes();
+        all_nodes.insert(all_nodes.end(), child_nodes.begin(), child_nodes.end());
+    }
+
+    return all_nodes;
+}
+
 std::vector <std::vector <int>> TreeNode::returnSolution(){
 
 	std::vector <std::vector <int>> solution;

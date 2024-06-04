@@ -28,6 +28,8 @@ class TreeNode
 
         TreeNode* getParent();
         TreeNode* getChild(int pos);
+        void removeChild(TreeNode* child);
+
 
         int childrenNumber(); 
 
@@ -40,6 +42,8 @@ class TreeNode
 
 		TreeNode* nearNode(TreeNode* node1, TreeNode* node2);
 		TreeNode* neast(TreeNode *root);
+
+        std::vector<TreeNode*> near(TreeNode* target_node,TreeNode* itr_nodes , double max_dist);
 
         std::vector <std::vector <int>> returnSolution();
 };

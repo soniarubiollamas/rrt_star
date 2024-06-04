@@ -110,6 +110,9 @@ bool RRTPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometr
 
 bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<int> goal, 
                             std::vector<std::vector<int>>& sol, std::vector<TreeNode*>& tree){
+    // Start the timer
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     bool finished = false;
 
     //Initialize random number generator
@@ -121,7 +124,7 @@ bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<
     std::cout << "Start node: " << start_node->getNode()[0] << ", " << start_node->getNode()[1] << std::endl;
 
     // std::vector<TreeNode*> tree;
-    tree.push_back(start_node);
+    // tree.push_back(start_node);
     int i = 0;
 
     while(finished == false && i < max_samples_){
@@ -145,72 +148,57 @@ bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<
             std::cout << "Distance greater than max_dist" << std::endl;
             float angle = atan2(random_point[1]-nearest_point[1], random_point[0]-nearest_point[0]);
             // Same direction at distance max_dist_
-            random_point[0]= nearest_point[0] + max_dist_ * cos(angle)*10;
-            random_point[1]= nearest_point[1] + max_dist_ * sin(angle)*10;
+            random_point[0]= nearest_point[0] + max_dist_ * cos(angle);
+            random_point[1]= nearest_point[1] + max_dist_ * sin(angle);
             std::cout << "New random point: " << random_point[0] << ", " << random_point[1] << std::endl;
-            delete random_node;
-            random_node = new TreeNode(random_point);   
+            // delete random_node;
+            random_node = new TreeNode(random_point);
+            // tree.push_back(random_node);   
             std:: cout << "New random node: " << random_node->getNode()[0] << ", " << random_node->getNode()[1] << std::endl;
         }
 
         bool free = obstacleFree(nearest_point[0], nearest_point[1], random_point[0], random_point[1]);
         std::cout << "Free from random point and nearest point: " << free << std::endl;
         if (free){
-            // compute cost
-
+            // the input to the near function is the first node and the node within we want to find the neighbors
+            // change max dist for testing
+            // CAMBIAR NOMBRE A FIND NEIGHBORS PARA NO COPIARNOS
             double actual_min_random_cost = nearest_node->getCost() + distance(nearest_point[0], nearest_point[1], random_point[0], random_point[1]);
-            random_node->setCost(actual_min_random_cost);
             std::cout << "Actual random cost: " << actual_min_random_cost << std::endl;
-            //add the new node to the tree
-            nearest_node->appendChild(random_node);
-            // tree.push_back(random_node);
-            std::cout << "Added child" << std::endl;
-            std::cout << "Number of nodes in tree after adding the random node: " << tree.size() << std::endl;
+            random_node->setCost(actual_min_random_cost);
 
+            std::cout << "Finding neighbors with search radius: " << search_radius_ << std::endl;
+            std::vector<TreeNode*> neighbors = start_node->near(random_node,start_node,max_dist_);            // compute cost
+            
+            TreeNode* min_cost_node = chooseParent(random_node, neighbors);
+            // std::cout << "Number of nodes in tree after adding the neighbor node with the lowest cost: " << tree.size() << std::endl;
 
-            // find neighbors of the new node
-            std::cout << "Finding neighbors" << std::endl;
-            std::vector<TreeNode*> neighbors = findNeighbors(random_node, search_radius_, tree);
-            TreeNode* min_cost_node = nearest_node;
-            std::cout << "Search radius: " << search_radius_ << std::endl;
-            // std::cout << "Number of nodes in tree: " << tree.size() << std::endl;
-            std::cout << "Neighbors size: " << neighbors.size() << std::endl;
-
-            for(TreeNode* neighbor: neighbors){
-                double tentative_cost = neighbor->getCost() + distance(neighbor->getNode()[0], neighbor->getNode()[1], random_node->getNode()[0], random_node->getNode()[1]);
+            if(min_cost_node != nullptr){
+                double tentative_cost = min_cost_node->getCost() + distance(min_cost_node->getNode()[0], min_cost_node->getNode()[1], random_node->getNode()[0], random_node->getNode()[1]);
                 // std::cout << "Random node cost: " << random_node->getCost() << std::endl;
                 // std::cout << "Tentavie cost from neigbor: " << tentative_cost << std::endl;
-                actual_min_random_cost =  random_node->getCost();
                 if(tentative_cost < actual_min_random_cost){
-                    std::cout << "Tentative cost less than random node cost" << std::endl;
+                    std::cout << "Tentative cost less than the previous cost from random to nearest node" << std::endl;
+                    random_node->setCost(tentative_cost);                    
                     actual_min_random_cost = tentative_cost;
-                    // random_node->setCost(tentative_cost);
-                    // new_cost = tentative_cost;
-                    min_cost_node = neighbor;
-                    std::cout << "New neigbor node is: " << neighbor->getNode()[0] << ", " << neighbor->getNode()[1] << std::endl;
+                    min_cost_node->appendChild(random_node);
+                    std::cout << "New neigbor node is: " << min_cost_node->getNode()[0] << ", " << min_cost_node->getNode()[1] << std::endl;
+                    updateCosts(random_node,start_node,max_dist_);
                 }
             }
-            random_node->setCost(actual_min_random_cost);    
-            random_node->setParent(min_cost_node);
-            // random_node->setCost(new_cost);
-            min_cost_node->appendChild(random_node);
-            tree.push_back(random_node);
-            tree.push_back(min_cost_node);
-            std::cout << "Linked random node with min_cost_node" << std::endl;
-
-            
-
-            // rewire the tree
-            rewire(random_node, neighbors);
-            std::cout << "Rewired" << std::endl;
 
             finished = obstacleFree(min_cost_node->getNode()[0], min_cost_node->getNode()[1], goal[0], goal[1]);
+            // hay que añadir si la distancia es menos que el threshold?
             if (finished){
-                double cost_goal_node = random_node->getCost() + distance(min_cost_node->getNode()[0], min_cost_node->getNode()[1], goal[0], goal[1]);
-                goal_node = new TreeNode(goal, cost_goal_node); // add goal node
-                goal_node->setParent(min_cost_node);
-                tree.push_back(goal_node);
+                // double cost_goal_node = random_node->getCost() + distance(min_cost_node->getNode()[0], min_cost_node->getNode()[1], goal[0], goal[1]);
+                // goal_node = new TreeNode(goal, cost_goal_node); // add goal node
+                // goal_node->setParent(min_cost_node);
+                // tree.push_back(goal_node);
+                sol = random_node->returnSolution();
             	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!! Finished !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1" << std::endl;
+                // quit the loop
+                return true;
+                
             }
             visualizeTree(tree);
         }
@@ -219,9 +207,9 @@ bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<
     }
 
 
-    sol = goal_node->returnSolution();
+    // sol = goal_node->returnSolution();
     std::cout << "Solution size: " << sol.size() << std::endl;
-    return true; // not finished?
+    // return false; // not finished?
 }
 
 bool RRTPlanner::obstacleFree(const unsigned int x0, const unsigned int y0, 
@@ -325,11 +313,56 @@ std::vector<TreeNode*> RRTPlanner::findNeighbors(TreeNode* node, double radius, 
     for (TreeNode* other_node: tree){
         double dist = distance(node->getNode()[0], node->getNode()[1], other_node->getNode()[0], other_node->getNode()[1]);
         if (dist*resolution_ <= radius){
-            std::cout << "  Distance to neigbor node: " << dist*resolution_ << std::endl;
+            // std::cout << "  Distance to neigbor node: " << dist*resolution_ << std::endl;
             neighbors.push_back(other_node);
         }
     }
     return neighbors;
+}
+
+// Function to find the parent node with the lowest cost to a given node
+TreeNode* RRTPlanner::chooseParent(TreeNode* random_node, const std::vector<TreeNode*>& near_nodes) {
+    TreeNode* min_cost_parent = nullptr;
+    double min_cost = std::numeric_limits<double>::infinity();
+    double near_x, near_y, rand_x, rand_y,cost;
+    
+    for (TreeNode* near_node : near_nodes) {        
+        if (obstacleFree(near_node->getNode()[0], near_node->getNode()[1], random_node->getNode()[0], random_node->getNode()[1])) {
+            near_x = near_node->getNode()[0];
+            near_y = near_node->getNode()[1];
+            rand_x = random_node->getNode()[0];
+            rand_y = random_node->getNode()[1];
+            
+            cost = near_node->getCost() + distance(near_x,near_y, rand_x ,rand_y)*resolution_;            
+            // Additional condition for rewiring
+            if (cost < min_cost) {
+                // Check if rewiring the tree with the new node as a parent leads to a lower cost for its children
+                min_cost = cost;
+                min_cost_parent = near_node; }
+        }
+    }
+    return min_cost_parent;
+}
+
+
+void RRTPlanner::updateCosts(TreeNode* random_node,TreeNode* start_node , double max_dist) {
+    std::vector<TreeNode*> near_nodes = start_node->near(random_node,start_node,max_dist_);
+    double node_x, node_y, rand_x, rand_y,new_cost;
+    for (TreeNode* node : near_nodes) {        
+        node_x = node->getNode()[0];
+        node_y = node->getNode()[1];
+        rand_x = random_node->getNode()[0];
+        rand_y = random_node->getNode()[1];
+        if (obstacleFree(node_x,node_y, rand_x ,rand_y)){
+            new_cost = random_node->getCost() + (distance(node_x,node_y, rand_x ,rand_y)*resolution_);
+            if (new_cost < node->getCost() ) {
+                node->getParent()->removeChild(node);
+                random_node->appendChild(node);
+                node->setCost(new_cost);
+                updateCosts(node,start_node,max_dist_);
+            }   
+        }
+    }
 }
 
 void RRTPlanner::rewire(TreeNode* node, std::vector<TreeNode*> neighbors){
