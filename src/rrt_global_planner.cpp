@@ -52,10 +52,6 @@ void RRTPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_
         initialized_ = true;
 
         
-        points_pub_ = nh.advertise<visualization_msgs::MarkerArray>("rrt_points", 1, true);
-        lines_pub_ = nh.advertise<visualization_msgs::MarkerArray>("rrt_lines", 1, true);
-        marker_pub = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1);
-        
     }
 	else{
 	    ROS_WARN("This planner has already been initialized... doing nothing.");
@@ -100,7 +96,7 @@ bool RRTPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometr
     std::vector<int> point_goal{(int)goal_mx,(int)goal_my};    
   	std::vector<std::vector<int>> solRRTStar;
     std::cout << "Computing RRT*" << std::endl;
-    bool computed = computeRRTStar(point_start, point_goal, solRRTStar, tree);
+    bool computed = computeRRTStar(point_start, point_goal, solRRTStar);
     if (computed){        
         getPlan(solRRTStar, plan);
         // add goal
@@ -113,7 +109,7 @@ bool RRTPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometr
 }
 
 bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<int> goal, 
-                            std::vector<std::vector<int>>& sol, std::vector<TreeNode*>& tree){
+                            std::vector<std::vector<int>>& sol){
     // Start the timer
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -208,7 +204,6 @@ bool RRTPlanner::computeRRTStar(const std::vector<int> start, const std::vector<
                 break;
                 
             }
-            // visualizeTree(tree);
         }
         i++;
         std:: cout << "Iteration: " << i << std::endl;
@@ -266,7 +261,6 @@ bool RRTPlanner::obstacleFree(const unsigned int x0, const unsigned int y0,
 
 
 void RRTPlanner::getPlan(const std::vector<std::vector<int>> sol, std::vector<geometry_msgs::PoseStamped>& plan){
-    visualization_msgs::MarkerArray markerArray;
     int id = 0;
 
     // Previous pose to connect lines
@@ -289,19 +283,19 @@ void RRTPlanner::getPlan(const std::vector<std::vector<int>> sol, std::vector<ge
     }
 }
 
-std::vector<TreeNode*> RRTPlanner::findNeighbors(TreeNode* node, double radius, std::vector<TreeNode*>& tree){
-    std::vector<TreeNode*> neighbors;
-    std::cout << "  entered finding neighbors function" << std::endl;
-    std::cout << "  Number of nodes in tree INSIDE FUNCTION: " << tree.size() << std::endl;
-    for (TreeNode* other_node: tree){
-        double dist = distance(node->getNode()[0], node->getNode()[1], other_node->getNode()[0], other_node->getNode()[1]);
-        if (dist*resolution_ <= radius){
-            // std::cout << "  Distance to neigbor node: " << dist*resolution_ << std::endl;
-            neighbors.push_back(other_node);
-        }
-    }
-    return neighbors;
-}
+// std::vector<TreeNode*> RRTPlanner::findNeighbors(TreeNode* node, double radius, std::vector<TreeNode*>& tree){
+//     std::vector<TreeNode*> neighbors;
+//     std::cout << "  entered finding neighbors function" << std::endl;
+//     std::cout << "  Number of nodes in tree INSIDE FUNCTION: " << tree.size() << std::endl;
+//     for (TreeNode* other_node: tree){
+//         double dist = distance(node->getNode()[0], node->getNode()[1], other_node->getNode()[0], other_node->getNode()[1]);
+//         if (dist*resolution_ <= radius){
+//             // std::cout << "  Distance to neigbor node: " << dist*resolution_ << std::endl;
+//             neighbors.push_back(other_node);
+//         }
+//     }
+//     return neighbors;
+// }
 
 // Function to find the parent node with the lowest cost to a given node
 TreeNode* RRTPlanner::chooseParent(TreeNode* random_node, const std::vector<TreeNode*>& near_nodes) {
@@ -358,101 +352,5 @@ void RRTPlanner::rewire(TreeNode* node, std::vector<TreeNode*> neighbors){
     }
 }
 
-
-// void RRTPlanner::visualizeTree(const std::vector<TreeNode*>& tree) {
-//     visualization_msgs::MarkerArray marker_array;
-
-//     // Create points marker
-//     visualization_msgs::Marker points_marker;
-//     points_marker.header.frame_id = global_frame_id_;
-//     points_marker.header.stamp = ros::Time::now();
-//     points_marker.ns = "rrt_points";
-//     points_marker.id = 0;
-//     points_marker.type = visualization_msgs::Marker::POINTS;
-//     points_marker.action = visualization_msgs::Marker::ADD;
-//     points_marker.pose.orientation.w = 1.0;
-//     points_marker.scale.x = 0.1;
-//     points_marker.scale.y = 0.1;
-//     points_marker.color.r = 1.0;
-//     points_marker.color.a = 1.0;
-
-//     // Create lines marker
-//     visualization_msgs::Marker lines_marker;
-//     lines_marker.header.frame_id = global_frame_id_;
-//     lines_marker.header.stamp = ros::Time::now();
-//     lines_marker.ns = "rrt_lines";
-//     lines_marker.id = 1;
-//     lines_marker.type = visualization_msgs::Marker::LINE_LIST;
-//     lines_marker.action = visualization_msgs::Marker::ADD;
-//     lines_marker.pose.orientation.w = 1.0;
-//     lines_marker.scale.x = 0.05;
-//     lines_marker.color.b = 1.0;
-//     lines_marker.color.a = 1.0;
-
-//     for (const auto& node : tree) {
-//         geometry_msgs::Point p;
-//         costmap_->mapToWorld(node->getNode()[0], node->getNode()[1], p.x, p.y);
-//         p.z = 0.0;
-//         points_marker.points.push_back(p);
-
-//         if (node->getParent()) {
-//             geometry_msgs::Point parent_p;
-//             costmap_->mapToWorld(node->getParent()->getNode()[0], node->getParent()->getNode()[1], parent_p.x, parent_p.y);
-//             parent_p.z = 0.0;
-//             lines_marker.points.push_back(p);
-//             lines_marker.points.push_back(parent_p);
-//         }
-//     }
-
-//     marker_array.markers.push_back(points_marker);
-//     marker_array.markers.push_back(lines_marker);
-
-//     points_pub_.publish(marker_array);
-//     lines_pub_.publish(marker_array);
-// }
-
-// void visualizeNodesAndEdges() {
-//     visualization_msgs::MarkerArray markers;
-
-//     // Loop over all nodes
-//     for (const auto& node : nodes) {
-//         visualization_msgs::Marker node_marker;
-//         node_marker.header.frame_id = "map";
-//         node_marker.type = visualization_msgs::Marker::SPHERE;
-//         node_marker.action = visualization_msgs::Marker::ADD;
-//         node_marker.pose.position.x = node.x;
-//         node_marker.pose.position.y = node.y;
-//         node_marker.pose.position.z = 0;
-//         node_marker.scale.x = 0.1;
-//         node_marker.scale.y = 0.1;
-//         node_marker.scale.z = 0.1;
-//         node_marker.color.a = 1.0;
-//         node_marker.color.r = 0.0;
-//         node_marker.color.g = 1.0;
-//         node_marker.color.b = 0.0;
-
-//         markers.markers.push_back(node_marker);
-
-//         // Loop over all edges from this node
-//         for (const auto& edge : node.edges) {
-//             visualization_msgs::Marker edge_marker;
-//             edge_marker.header.frame_id = "map";
-//             edge_marker.type = visualization_msgs::Marker::LINE_STRIP;
-//             edge_marker.action = visualization_msgs::Marker::ADD;
-//             edge_marker.points.push_back(node.position);
-//             edge_marker.points.push_back(edge.position);
-//             edge_marker.scale.x = 0.02;
-//             edge_marker.color.a = 1.0;
-//             edge_marker.color.r = 1.0;
-//             edge_marker.color.g = 0.0;
-//             edge_marker.color.b = 0.0;
-
-//             markers.markers.push_back(edge_marker);
-//         }
-//     }
-
-//     // Publish the markers
-//     marker_pub.publish(markers);
-// }
 };
 
