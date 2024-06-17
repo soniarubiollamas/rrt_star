@@ -179,6 +179,7 @@ namespace rrt_planner
                 // find the parent with the lowest cost
                 TreeNode *best_parent = nullptr;
                 double min_tentative_cost = std::numeric_limits<double>::infinity();
+                double cost;
 
                 for (TreeNode *near_node : neighbors)
                 {
@@ -198,29 +199,23 @@ namespace rrt_planner
                 {
                     double new_cost = best_parent->getCost() + distance(best_parent->getNode()[0], best_parent->getNode()[1], random_node->getNode()[0], random_node->getNode()[1]) * resolution_;
                     // std::cout << "Random node cost: " << random_node->getCost() << std::endl;
-                    // std::cout << "Tentavie cost from neigbor: " << tentative_cost << std::endl;
+                    // std::cout << "Tentative cost from neighbor: " << tentative_cost << std::endl;
                     random_node->setCost(new_cost);
-                    min_cost_node->appendChild(random_node);
+                    best_parent->appendChild(random_node);
                     // std::cout << "New neigbor node is: " << min_cost_node->getNode()[0] << ", " << min_cost_node->getNode()[1] << std::endl;
-                    updateCosts(random_node, start_node, max_dist_);
+                    updateCosts(random_node, start_node, search_radius_);
                 }
 
-                double goal_distance = distance(min_cost_node->getNode()[0], min_cost_node->getNode()[1], goal[0], goal[1]) * resolution_;
-                if (goal_distance <= 1 && obstacleFree(min_cost_node->getNode()[0], min_cost_node->getNode()[1], goal[0], goal[1]))
+                double goal_distance = distance(best_parent->getNode()[0], best_parent->getNode()[1], goal[0], goal[1]) * resolution_;
+                bool goal_free = obstacleFree(best_parent->getNode()[0], best_parent->getNode()[1], goal[0], goal[1]);
+                if (goal_distance <= 1 && goal_free)
                 {
-                    // double cost_goal_node = random_node->getCost() + distance(min_cost_node->getNode()[0], min_cost_node->getNode()[1], goal[0], goal[1]);
-                    // goal_node = new TreeNode(goal, cost_goal_node); // add goal node
-                    // goal_node->setParent(min_cost_node);
-                    // tree.push_back(goal_node);
                     sol = random_node->returnSolution();
-                    // finished = true;
                     std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!! Finished !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1" << std::endl;
-                    std::cout << "hola" << std::endl;
                     // quit the loop
 
                     finished = true;
                 }
-                // visualizeTree(tree);
             }
             i++;
             // std:: cout << "Iteration: " << i << std::endl;
@@ -359,54 +354,21 @@ namespace rrt_planner
         lines_pub_.publish(markerArray);
     }
 
-    // Function to find the parent node with the lowest cost to a given node
-    TreeNode *RRTPlanner::chooseParent(TreeNode *random_node, const std::vector<TreeNode *> &near_nodes)
+    void RRTPlanner::updateCosts(TreeNode *random_node, TreeNode *start_node, double search_radius_)
     {
-        TreeNode *min_cost_parent = nullptr;
-        double min_cost = std::numeric_limits<double>::infinity();
-        double near_x, near_y, rand_x, rand_y, cost;
-
-        for (TreeNode *near_node : near_nodes)
+        std::vector<TreeNode *> neighbors = start_node->findNeighbors(random_node, start_node, search_radius_);
+        double new_cost;
+        for (TreeNode *neighbor : neighbors)
         {
-            if (obstacleFree(near_node->getNode()[0], near_node->getNode()[1], random_node->getNode()[0], random_node->getNode()[1]))
+            if (obstacleFree(neighbor->getNode()[0], neighbor->getNode()[1], random_node->getNode()[0], random_node->getNode()[1]))
             {
-                near_x = near_node->getNode()[0];
-                near_y = near_node->getNode()[1];
-                rand_x = random_node->getNode()[0];
-                rand_y = random_node->getNode()[1];
-
-                cost = near_node->getCost() + distance(near_x, near_y, rand_x, rand_y) * resolution_;
-                // Additional condition for rewiring
-                if (cost < min_cost)
+                new_cost = random_node->getCost() + (distance(neighbor->getNode()[0], neighbor->getNode()[1], random_node->getNode()[0], random_node->getNode()[1]) * resolution_);
+                if (new_cost < neighbor->getCost())
                 {
-                    // Check if rewiring the tree with the new node as a parent leads to a lower cost for its children
-                    min_cost = cost;
-                    min_cost_parent = near_node;
-                }
-            }
-        }
-        return min_cost_parent;
-    }
-
-    void RRTPlanner::updateCosts(TreeNode *random_node, TreeNode *start_node, double max_dist)
-    {
-        std::vector<TreeNode *> near_nodes = start_node->findNeighbors(random_node, start_node, max_dist_);
-        double node_x, node_y, rand_x, rand_y, new_cost;
-        for (TreeNode *node : near_nodes)
-        {
-            node_x = node->getNode()[0];
-            node_y = node->getNode()[1];
-            rand_x = random_node->getNode()[0];
-            rand_y = random_node->getNode()[1];
-            if (obstacleFree(node_x, node_y, rand_x, rand_y))
-            {
-                new_cost = random_node->getCost() + (distance(node_x, node_y, rand_x, rand_y) * resolution_);
-                if (new_cost < node->getCost())
-                {
-                    node->getParent()->removeChild(node);
-                    random_node->appendChild(node);
-                    node->setCost(new_cost);
-                    updateCosts(node, start_node, max_dist_);
+                    neighbor->getParent()->removeChild(neighbor);
+                    random_node->appendChild(neighbor);
+                    neighbor->setCost(new_cost);
+                    updateCosts(neighbor, start_node, max_dist_);
                 }
             }
         }
