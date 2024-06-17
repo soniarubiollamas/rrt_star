@@ -169,8 +169,7 @@ namespace rrt_planner
             if (free)
             {
                 // the input to the near function is the first node and the node within we want to find the neighbors
-                // change radius for testing
-                // CAMBIAR NOMBRE A FIND NEIGHBORS PARA NO COPIARNOS
+                // change radius for testings
 
                 // std::cout << "Finding neighbors with search radius: " << max_dist_ << std::endl;
                 std::vector<TreeNode *> neighbors = start_node->findNeighbors(random_node, start_node, search_radius_);
@@ -203,7 +202,7 @@ namespace rrt_planner
                     random_node->setCost(new_cost);
                     best_parent->appendChild(random_node);
                     // std::cout << "New neigbor node is: " << min_cost_node->getNode()[0] << ", " << min_cost_node->getNode()[1] << std::endl;
-                    updateCosts(random_node, start_node, search_radius_);
+                    rewire(random_node, start_node, search_radius_);
                 }
 
                 double goal_distance = distance(best_parent->getNode()[0], best_parent->getNode()[1], goal[0], goal[1]) * resolution_;
@@ -354,7 +353,7 @@ namespace rrt_planner
         lines_pub_.publish(markerArray);
     }
 
-    void RRTPlanner::updateCosts(TreeNode *random_node, TreeNode *start_node, double search_radius_)
+    void RRTPlanner::rewire(TreeNode *random_node, TreeNode *start_node, double search_radius_)
     {
         std::vector<TreeNode *> neighbors = start_node->findNeighbors(random_node, start_node, search_radius_);
         double new_cost;
@@ -368,21 +367,8 @@ namespace rrt_planner
                     neighbor->getParent()->removeChild(neighbor);
                     random_node->appendChild(neighbor);
                     neighbor->setCost(new_cost);
-                    updateCosts(neighbor, start_node, max_dist_);
+                    rewire(neighbor, start_node, max_dist_);
                 }
-            }
-        }
-    }
-
-    void RRTPlanner::rewire(TreeNode *node, std::vector<TreeNode *> neighbors)
-    {
-        for (TreeNode *neighbor : neighbors)
-        {
-            double new_cost = node->getCost() + distance(node->getNode()[0], node->getNode()[1], neighbor->getNode()[0], neighbor->getNode()[1]);
-            if (new_cost < neighbor->getCost())
-            {
-                neighbor->setParent(node);
-                neighbor->setCost(new_cost);
             }
         }
     }

@@ -38,8 +38,7 @@ namespace rrt_planner
         double max_samples_;
         double max_dist_;
         double resolution_;
-        double search_radius_;        // new parameter for neighborhood search radius
-
+        double search_radius_; // new parameter for neighborhood search radius
 
         // functions to compute the plan
         bool obstacleFree(const unsigned int x0, const unsigned int y0, const unsigned int x1, const unsigned int y1);
@@ -47,8 +46,7 @@ namespace rrt_planner
                             std::vector<std::vector<int>> &sol);
         void getPlan(const std::vector<std::vector<int>> &sol, std::vector<geometry_msgs::PoseStamped> &plan);
 
-        void rewire(TreeNode *node, std::vector<TreeNode *> neighbors);
-        void updateCosts(TreeNode *node, TreeNode *start_node, double search_radius_);
+        void rewire(TreeNode *node, TreeNode *start_node, double search_radius_);
 
         // Plots
         ros::Publisher lines_pub_;
