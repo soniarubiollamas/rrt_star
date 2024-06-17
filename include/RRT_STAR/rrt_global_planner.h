@@ -39,18 +39,30 @@ private:
     double max_dist_;
     double resolution_;
     double search_radius_; // new parameter for neighborhood search radius
-    // std::vector<TreeNode*> tree; // tree to store all the nodes. to findNeighbor works
+    std::vector<TreeNode*> tree; // tree to store all the nodes. to findNeighbor works
 
     // functions to compute the plan
     bool obstacleFree(const unsigned int x0, const unsigned int y0, const unsigned int x1, const unsigned int y1);
     bool computeRRTStar(const std::vector<int> start, const std::vector<int> goal, 
                             std::vector<std::vector<int>>& sol);
-    void getPlan(const std::vector<std::vector<int>> sol, std::vector<geometry_msgs::PoseStamped>& plan);
+    void getPlan(const std::vector<std::vector<int>>& sol, std::vector<geometry_msgs::PoseStamped>& plan);
+
     std::vector<TreeNode*> findNeighbors(TreeNode* node, double radius, std::vector<TreeNode*>& tree);
     void rewire(TreeNode* node, std::vector<TreeNode*> neighbors);
     TreeNode* chooseParent(TreeNode* rand_node, const std::vector<TreeNode*>& near_nodes);
     void updateCosts(TreeNode* node,TreeNode* start_node , double max_dist);
- 
+
+    // Plots
+    ros::Publisher lines_pub_;
+    ros::Publisher points_pub_;
+    ros::Publisher marker_pub;
+
+    void plotPoint(const std::vector<int>& point, const std::string& ns, const int id,
+                                const double size, const double color_r, const double color_g, const double color_b);
+    void visualizeTree(const std::vector<TreeNode*>& tree);
+
+    void visualizeNodesAndEdges();
+
 
 };
 
