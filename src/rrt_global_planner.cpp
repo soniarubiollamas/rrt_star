@@ -16,7 +16,7 @@ namespace rrt_planner
     }
 
     RRTPlanner::RRTPlanner() : costmap_ros_(NULL), initialized_(false),
-                               max_samples_(0.0), search_radius_(0.0) {}
+                               max_samples_(0.0) {}
 
     RRTPlanner::RRTPlanner(std::string name, costmap_2d::Costmap2DROS *costmap_ros)
     {
@@ -33,14 +33,14 @@ namespace rrt_planner
             ros::NodeHandle nh_global("~/global_costmap/");
 
             nh.param("maxsamples", max_samples_, 0.0);
-            nh.param("search_radius", search_radius_, 1.0);
+            // nh.param("search_radius", search_radius_, 1.0);
 
             // to make sure one of the nodes in the plan lies in the local costmap
             double width, height;
             nh_local.param("width", width, 3.0);
             nh_local.param("height", height, 3.0);
-            max_dist_ = (std::min(width, height) / 3.0);
-            search_radius_ = max_dist_; // change this values to test the algorithm
+            max_dist_ = (std::min(width, height) / 3.0); // change this values to test the algorithm
+            search_radius_ = (std::min(width, height) / 3.0)*2; // change this values to test the algorithm
 
             nh_global.param("resolution", resolution_, 0.032);
 
@@ -123,6 +123,7 @@ namespace rrt_planner
     {
         // Start the timer
         auto start_time = std::chrono::high_resolution_clock::now();
+        std:: cout << "max_dist: " << max_dist_ << std::endl;
 
         bool finished = false;
 
@@ -134,6 +135,7 @@ namespace rrt_planner
         TreeNode *goal_node = nullptr;
         TreeNode *random_node;
         std::cout << "Start node: " << start_node->getNode()[0] << ", " << start_node->getNode()[1] << std::endl;
+        std::cout << "Goal node: " << goal[0] << ", " << goal[1] << std::endl;
 
         int i = 0;
 
@@ -235,7 +237,8 @@ namespace rrt_planner
         std::cout << "Cost of the path: " << cost << std::endl;
 
         // print the distance from the start to goal
-        std::cout << "Distance from start to goal: " << distance(start[0], start[1], goal[0], goal[1]) * resolution_ << std::endl;
+        std::cout << "Number of nodes in path" << sol.size() << std::endl;
+        std::cout << "Density of the tree: " << i << std::endl;
 
         // return false; // not finished?
         return finished;
