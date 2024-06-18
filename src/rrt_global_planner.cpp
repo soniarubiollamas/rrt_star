@@ -40,7 +40,7 @@ namespace rrt_planner
             nh_local.param("width", width, 3.0);
             nh_local.param("height", height, 3.0);
             max_dist_ = (std::min(width, height) / 3.0); // change this values to test the algorithm
-            search_radius_ = (std::min(width, height) / 3.0)*2; // change this values to test the algorithm
+            search_radius_ = (std::min(width, height) / 3.0); // change this values to test the algorithm
 
             nh_global.param("resolution", resolution_, 0.032);
 
@@ -50,9 +50,7 @@ namespace rrt_planner
 
             initialized_ = true;
 
-            points_pub_ = nh.advertise<visualization_msgs::MarkerArray>("rrt_points", 1, true);
             lines_pub_ = nh.advertise<visualization_msgs::MarkerArray>("rrt_lines", 1, true);
-            marker_pub = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1);
         }
         else
         {
@@ -321,9 +319,8 @@ namespace rrt_planner
             pose.pose.orientation.w = 1;
             plan.push_back(pose);
 
-            // Add a Marker for visualization
-            plotPoint(point, "rrtStar_path_sol", id++, 0.4, 0.0, 1.0, 0.0);
-
+            std::cout << "Point outside: " << point[0] << ", " << point[1] << std::endl;
+            
             // Add a Line marker between consecutive points
             if (!prevPose.pose.position.x && !prevPose.pose.position.y)
             {
@@ -340,16 +337,17 @@ namespace rrt_planner
             lineMarker.action = visualization_msgs::Marker::ADD;
             lineMarker.points.push_back(prevPose.pose.position);
             lineMarker.points.push_back(pose.pose.position);
-            lineMarker.scale.x = 0.2; // Adjust the width of the line
-            lineMarker.color.a = 1.0; // Set alpha (transparency) to 1.0 (fully opaque)
-            lineMarker.color.r = 0.0; // Set color (red)
-            lineMarker.color.g = 1.0; // Set color (green)
-            lineMarker.color.b = 0.0; // Set color (blue)
+            lineMarker.scale.x = 0.2; 
+            lineMarker.color.a = 1.0; 
+            lineMarker.color.r = 0.0; 
+            lineMarker.color.g = 1.0; 
+            lineMarker.color.b = 0.0; 
 
             markerArray.markers.push_back(lineMarker);
 
             // Update the previous pose
             prevPose = pose;
+
         }
 
         // Publish the MarkerArray outside the loop
@@ -374,32 +372,6 @@ namespace rrt_planner
                 }
             }
         }
-    }
-
-    void RRTPlanner::plotPoint(const std::vector<int> &point, const std::string &ns, const int id,
-                               const double size, const double color_r, const double color_g, const double color_b)
-    {
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = global_frame_id_;
-        marker.header.stamp = ros::Time::now();
-        marker.ns = ns;
-        marker.id = id;
-        marker.type = visualization_msgs::Marker::SPHERE;
-        marker.action = visualization_msgs::Marker::ADD;
-        costmap_->mapToWorld(static_cast<unsigned int>(point[0]), static_cast<unsigned int>(point[1]),
-                             marker.pose.position.x, marker.pose.position.y);
-        marker.pose.position.z = 0.0;
-        marker.pose.orientation.w = 1.0;
-        marker.scale.x = size;
-        marker.scale.y = size;
-        marker.scale.z = size;
-        marker.color.a = 1.0;
-        marker.color.r = color_r;
-        marker.color.g = color_g;
-        marker.color.b = color_b;
-
-        // Publicar el marcador directamente en lugar de agregarlo a un MarkerArray
-        points_pub_.publish(marker);
     }
 
 };

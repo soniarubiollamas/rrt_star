@@ -50,14 +50,7 @@ namespace rrt_planner
 
         // Plots
         ros::Publisher lines_pub_;
-        ros::Publisher points_pub_;
-        ros::Publisher marker_pub;
 
-        void plotPoint(const std::vector<int> &point, const std::string &ns, const int id,
-                       const double size, const double color_r, const double color_g, const double color_b);
-        void visualizeTree(const std::vector<TreeNode *> &tree);
-
-        void visualizeNodesAndEdges();
     };
 
 };
